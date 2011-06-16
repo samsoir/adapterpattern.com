@@ -1,0 +1,61 @@
+# def.reyssi.net server
+server {
+	listen 80;
+	server_name adapterpattern.com www.adapterpattern.com;
+	root  /var/www/nginx/adapterpattern.com/public;
+
+	access_log /var/log/nginx/adapterpattern.com.access.log;
+	error_log /var/log/nginx/adapterpattern.com.error.log;
+
+	location / {
+		index  index.php;
+		try_files $uri $uri/ index.php$uri @handler;
+	}
+
+	error_page   404              /404;
+	error_page   500 502 503 504  /50x.html;
+	location = /50x.html {
+		root /usr/share/nginx/www;
+	}
+
+	# this prevents hidden files (beginning with a period) from being served
+	location ~ /\. { 
+		access_log off; 
+		log_not_found off; 
+		deny all; 
+	}
+
+	location @handler {
+		rewrite / /index.php;
+	}
+
+	# serve static files directly
+	location ~* \.(?:jpe?g|gif|css|png|js|ico|html|txt)$ {
+		access_log off;
+		expires max;
+		add_header Pragma public;
+		add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+	}
+
+	location ~ \.php($|/) {
+		expires off;
+
+		set $script  index.php;
+		set $path_info  "";
+
+		if ($uri ~ "^(.+\.php)(/.*)") {
+			set $script    $1;
+			set $path_info $2;
+		}
+
+		fastcgi_pass    unix:/tmp/php5-fpm.sock;
+		fastcgi_index   index.php;
+		fastcgi_param   SCRIPT_NAME      $script;
+		fastcgi_param   SCRITP_FILENAME  $document_root/$script;
+		fastcgi_param   QUERY_STRING     $query_string;
+		fastcgi_param   PATH_INFO        $path_info;
+		fastcgi_param   KOHANA_ENV       'DEVELOPMENT';
+
+		include /etc/nginx/fastcgi_params;
+    }
+}
